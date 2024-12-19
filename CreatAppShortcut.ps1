@@ -1,6 +1,6 @@
 # Define the path to the application .exe file and the shortcut name
-$exePath = "C:\Path\To\YourApplication.exe"  # Replace with the actual path to your .exe file
-$shortcutName = "Launch Your Application"
+$exePath = "C:\files\SPYXX.exe"  # Replace with the actual path to your .exe file
+$shortcutName = "My Spy"
 
 # Paths for Public Desktop and Start Menu
 $publicDesktopPath = [System.IO.Path]::Combine([Environment]::GetFolderPath("CommonDesktopDirectory"))
@@ -34,13 +34,27 @@ Create-Shortcut -targetPath $exePath -shortcutPath $publicDesktopPath -shortcutN
 # Create the Start Menu Shortcut
 Create-Shortcut -targetPath $exePath -shortcutPath $startMenuPath -shortcutName $shortcutName
 
-# Pin to Taskbar using explorer.exe
-$desktopShortcutPath = [System.IO.Path]::Combine($publicDesktopPath, "$shortcutName.lnk")
-if (Test-Path -Path $desktopShortcutPath) {
-    # Launch the explorer command to pin to the taskbar
-    Start-Process -FilePath "explorer.exe" -ArgumentList "/select,`"$desktopShortcutPath`""
-    Start-Sleep -Seconds 2
-    [void][System.Windows.Forms.SendKeys]::SendWait("+{F10}p")  # Simulates Shift+F10 and Pin to Taskbar
+# Pin to Taskbar using custom PowerShell function
+function Pin-ToTaskbar {
+    param (
+        [string]$shortcutPath
+    )
+    $verb = "pin to taskbar"
+    $shellApp = New-Object -ComObject Shell.Application
+    $file = $shellApp.Namespace((Get-Item $shortcutPath).DirectoryName).ParseName((Get-Item $shortcutPath).Name)
+
+    foreach ($v in $file.Verbs()) {
+        if ($v.Name -replace '&', '' -match $verb) {
+            $v.DoIt()
+            Write-Output "Pinned to Taskbar: $shortcutPath"
+            return
+        }
+    }
+    Write-Warning "Pin to Taskbar option not found for $shortcutPath"
 }
+
+# Pin the desktop shortcut to Taskbar
+$desktopShortcutPath = [System.IO.Path]::Combine($publicDesktopPath, "$shortcutName.lnk")
+Pin-ToTaskbar -shortcutPath $desktopShortcutPath
 
 Write-Output "Shortcut created successfully on Desktop, Start Menu, and Taskbar."
